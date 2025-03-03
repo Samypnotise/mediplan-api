@@ -1,0 +1,1017 @@
+openapi: 3.1.1
+info:
+  title: Mediplan API
+  description: |
+    This documentation lists all the endpoints available in the Mediplan API
+  version: 1.0.0
+servers:
+  - url: http://localhost:3333
+security:
+  - bearerAuth: []
+tags:
+  - name: Authentification
+    description: La plupart des endpoints nécessitent l'authentification de la part
+      de l'utilisateur
+  - name: Utilisateurs
+    description: Everything about registered users
+  - name: Missions
+    description: Les missions sont les tâches confiées aux employés
+  - name: Demandes d'échange
+    description:
+      Ces demandes d'échange permettent aux aides-soignants de demander de changer de mission avec un autre employé.
+      Celui-ci peut alors accepter ou refuser.
+paths:
+  /auth/login:
+    post:
+      tags:
+        - Authentification
+      summary: Se connecter
+      description: A l'aide d'identifiants, permet à l'utilisateur de se connecter
+      operationId: login
+      security:
+        - {}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Credentials'
+      responses:
+        '200':
+          description: Connexion réussie
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccessToken'
+        '400':
+          description: Identifiants invalides
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/responses/BadRequest'
+              example:
+                type: https://example.com/errors/invalid-credentials
+                title: Impossible de se connecter
+                detail: Identifiants invalides
+  /auth/logout:
+    post:
+      tags:
+        - Authentification
+      summary: Se déconnecter
+      description: Permet à l'utilisateur de se déconnecter, supprimant ainsi le token
+        utilisé
+      operationId: logout
+      responses:
+        '200':
+          description: Déconnexion réussie
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /auth/revoke-all:
+    post:
+      tags:
+        - Authentification
+      summary: Révoquer tous les tokens d'accès
+      description: Permet à l'utilisateur de supprimer tous les tokens utilisés, dont
+        l'actuel
+      operationId: revokeAll
+      responses:
+        '200':
+          description: Révocation réussie
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /users/me:
+    get:
+      tags:
+        - Utilisateurs
+      summary: Récupérer l'utilisateur authentifié
+      description: Permet de récupérer les informations de l'utilisateur actuellement
+        authentifié
+      operationId: getMe
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          description: Unauthorized
+          $ref: '#/components/responses/Unauthorized'
+  /users:
+    get:
+      tags:
+        - Utilisateurs
+      summary: Récupérer les utilisateurs
+      description: Liste les utilisateurs visibles par l'utilisateur
+      operationId: getUsers
+      parameters:
+        - $ref: '#/components/parameters/userSearch'
+        - $ref: '#/components/parameters/userSort'
+        - $ref: '#/components/parameters/userType'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/page'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/User'
+                  - $ref: '#/components/schemas/PaginatedResource'
+    post:
+      tags:
+        - Utilisateurs
+      summary: Créer un utilisateur
+      description: Permet de créer un utilisateur
+      operationId: createUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/User'
+            examples:
+              Marc:
+                value:
+                  name: Samy
+                  email: user@test.com
+                  password: 123456Az
+              Cam:
+                value:
+                  name: Léo
+                  email: office@test.com
+                  password: 123456Az
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          description: Bad Request
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          description: Unauthorized
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Forbidden
+          $ref: '#/components/responses/Forbidden'
+  /users/{id}:
+    get:
+      tags:
+        - Utilisateurs
+      summary: Récupérer un utilisateur
+      description: Permet de récupérer les informations d'un utilisateur spécifique à
+        l'aide de son UUID.
+      operationId: getUser
+      parameters:
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          description: Renvoyée en cas de paramètres invalides
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: L'utilisateur est introuvable
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags:
+        - Utilisateurs
+      summary: Mettre à jour un utilisateur
+      description: Permet de mettre à jour les données d'un utilisateur
+      operationId: updateUser
+      parameters:
+        - $ref: '#/components/parameters/id'
+      requestBody:
+        description: Le corps de la requête avec les données à modifier
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/User'
+      responses:
+        '200':
+          description: Mise à jour effectuée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          description: Corps de la requête invalide
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Droits insuffisants pour modifier l'utilisateur
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: L'utilisateur est introuvable
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags:
+        - Utilisateurs
+      summary: Supprimer un utilisateur
+      description: Permet de supprimer un utilisateur
+      operationId: deleteUser
+      parameters:
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: Suppression effectuée
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Droits insuffisants pour supprimer l'utilisateur
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: L'utilisateur est introuvable
+          $ref: '#/components/responses/NotFound'
+  /missions:
+    get:
+      tags:
+        - Missions
+      summary: Récupérer la liste des missions
+      description: Permet de récupérer la liste des missions d'un utilisateur
+      operationId: getMissions
+      parameters:
+        - $ref: '#/components/parameters/missionSearch'
+        - $ref: '#/components/parameters/missionSort'
+        - $ref: '#/components/parameters/limit'
+        - $ref: '#/components/parameters/page'
+        - name: assigneeId
+          required: false
+          in: query
+          schema:
+            type: string
+            format: uuid
+            examples:
+              - 238a4d77-fab1-4fec-8de3-ee1a7a74f299
+      responses:
+        '200':
+          description: Liste récupérée
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Mission'
+                  - $ref: '#/components/schemas/PaginatedResource'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags:
+        - Missions
+      summary: Créer une mission
+      description: Permet de créer une mission pour un utilisateur
+      operationId: createMission
+      requestBody:
+        description: Données de la mission
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Mission'
+            examples:
+              createMission:
+                $ref: '#/components/examples/CreateMission'
+      responses:
+        '201':
+          description: Mission créée
+          $ref: '#/components/responses/Mission'
+        '400':
+          description: Données invalides
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Création de mission non autorisée
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Utilisateur introuvable
+          $ref: '#/components/responses/NotFound'
+  /missions/{id}:
+    get:
+      tags:
+        - Missions
+      summary: Récupérer une mission
+      description: Permet d'obtenir une mission via son ID.
+      operationId: getMission
+      parameters:
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: Mission récupérée
+          $ref: '#/components/responses/Mission'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Mission non trouvée
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags:
+        - Missions
+      summary: Mettre à jour une mission
+      description: Permet de mettre à jour une mission
+      operationId: updateMission
+      parameters:
+        - $ref: '#/components/parameters/id'
+      requestBody:
+        description: Données à mettre à jour
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/Mission'
+                - type: object
+                  required:
+                    - assigneeId
+                  properties:
+                    assigneeId:
+                      type: string
+                      format: uuid
+                      examples:
+                        - cb4e4ad8-7284-403f-b155-8f6996ed61dd
+            examples:
+              updateMission:
+                $ref: '#/components/examples/UpdateMission'
+      responses:
+        '200':
+          description: Mise à jour effectuée
+          $ref: '#/components/responses/Mission'
+        '400':
+          description: Données invalides
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Mise à jour de mission non autorisée
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Mission introuvable
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags:
+        - Missions
+      summary: Supprimer une mission
+      description: Permet de supprimer une mission
+      operationId: deleteMission
+      parameters:
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: Suppression effectuée
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Suppression de mission non autorisée
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          description: Mission introuvable
+          $ref: '#/components/responses/NotFound'
+  /swap-requests:
+    get:
+      tags:
+        - Demandes d'échange
+      summary: Lister les demandes d'échange
+      description: Permet de lister toutes les demandes d'échange,
+        et de filtrer sur leur statut, l'id de l'expéditeur et/ou du destinataire
+      operationId: getMissionSwapRequests
+      parameters:
+        - $ref: '#/components/parameters/id'
+        - name: missionId
+          in: query
+          description: Filtre sur l'identifiant de la mission
+          schema:
+            type: string
+            format: uuid
+            required: false
+            examples:
+              - ea9e4ad8-7284-403f-b155-8f6996ed61dd
+        - name: senderId
+          in: query
+          description: Filtre sur l'identifiant de l'expéditeur
+          schema:
+            type: string
+            format: uuid
+            required: false
+            examples:
+              - ea9e4ad8-7284-403f-b155-8f6996ed61dd
+        - name: receiverId
+          in: query
+          description: Filtre sur l'identifiant du destinataire
+          schema:
+            type: string
+            format: uuid
+            required: false
+            examples:
+              - cb4e4ad8-7284-403f-b155-8f6996ed61dd
+        - name: status
+          in: query
+          description: Filtre sur le statut de la demande
+          schema:
+            $ref: '#/components/schemas/MissionSwapRequestStatus'
+
+        - name: sort
+          description: Tri de la liste des demandes d'échange
+          required: false
+          in: query
+          schema:
+            type: string
+            enum:
+              - created_asc
+              - created_desc
+      responses:
+        '200':
+          description: Liste récupérée
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/ExtendedMissionSwapRequest'
+                  - $ref: '#/components/schemas/PaginatedResource'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Mission non trouvée
+          $ref: '#/components/responses/NotFound'
+    post:
+      tags:
+        - Demandes d'échange
+      summary: Créer une demande d'échange
+      description: Permet de créer une demande d'échange en spécifiant les deux aides-soignants concernés
+      operationId: createSwapRequest
+      requestBody:
+        description: Données de la demande
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MissionSwapRequest'
+            examples:
+              createRequest:
+                $ref: '#/components/examples/CreateMissionSwapRequest'
+      responses:
+        '201':
+          description: Demande d'échange créée
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExtendedMissionSwapRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Mission non trouvée
+          $ref: '#/components/responses/NotFound'
+  /swap-requests/{id}:
+    get:
+      tags:
+        - Demandes d'échange
+      summary: Récupérer les informations d'une demande d'échange
+      description: Permet de récupérer les données liées à une demande d'échange d'une mission avec son UUID.
+      operationId: getSwapRequest
+      parameters:
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: Données étendues de la demande
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExtendedMissionSwapRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Mission non trouvée
+          $ref: '#/components/responses/NotFound'
+    patch:
+      tags:
+        - Demandes d'échange
+      summary: Modifier une demande d'échange
+      description: Permet de modifier une demande d'échange
+      operationId: updateSwapRequest
+      parameters:
+        - $ref: '#/components/parameters/id'
+      requestBody:
+        description: Données à modifer
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MissionSwapRequest'
+            examples:
+              acceptRequest:
+                $ref: '#/components/examples/AcceptMissionSwapRequest'
+              rejectRequest:
+                $ref: '#/components/examples/RejectMissionSwapRequest'
+      responses:
+        '200':
+          description: Données modifiées de la demande d'échange
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MissionSwapRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Mission non trouvée
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags:
+        - Demandes d'échange
+      summary: Supprimer une demande d'échange
+      description: Permet de supprimer une demande d'échange
+      operationId: deleteSwapRequest
+      parameters:
+        - $ref: '#/components/parameters/id'
+      responses:
+        '200':
+          description: Suppression effectuée
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Mission non trouvée
+          $ref: '#/components/responses/NotFound'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: Opaque Bearer token authentication
+  parameters:
+    id:
+      name: id
+      description: Identifiant unique (UUID)
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+        examples:
+          - cb4e4ad8-7284-403f-b155-8f6996ed61dd
+    page:
+      name: page
+      description: Page demandée
+      in: query
+      schema:
+        type: integer
+        format: int64
+        examples:
+          - 2
+    limit:
+      name: limit
+      in: query
+      description: Le nombre d'éléments à renvoyer
+      schema:
+        type: integer
+        format: int64
+        default: 10
+    userSearch:
+      name: search
+      in: query
+      description: Recherche sur le nom ou prénom de l'utilisateur
+      schema:
+        type: string
+        examples:
+          - Sam
+          - Doe
+    userSort:
+      name: sort
+      description: Tri des utilisateurs
+      in: query
+      schema:
+        type: string
+        enum:
+          - first_asc
+          - first_desc
+          - last_asc
+          - last_desc
+    userType:
+      name: type
+      description: Type d'utilisateur
+      in: query
+      schema:
+        $ref: '#/components/schemas/UserType'
+    missionSearch:
+      name: search
+      description: Recherche sur le titre de la mission ou le nom du patient
+      in: query
+      schema:
+        type: string
+        examples:
+          - Prise de sang
+          - Contrôle
+    missionSort:
+      name: sort
+      description: Tri des missions
+      in: query
+      schema:
+        type: string
+        enum:
+          - title_asc
+          - title_desc
+          - start_asc
+          - start_desc
+          - end_asc
+          - end_desc
+  responses:
+    BadRequest:
+      description: Bad Request
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Forbidden:
+      description: Forbidden
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            type: https://example.com/errors/forbidden
+            title: Vous n'avez pas les droits pour effectuer cette action
+            detail: Vous devez être du type OFFICE pour faire cela.
+    NotFound:
+      description: NotFound
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            type: https://example.com/errors/not-found
+            title: La ressource spécifiée est introuvable
+            detail: Son ID est peut-être incorrect
+    Unauthorized:
+      description: Utilisateur non authentifié ou session expirée
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Mission:
+      description: Données sur la mission
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Mission'
+  schemas:
+    PaginatedResource:
+      type: object
+      properties:
+        meta:
+          type: object
+          properties:
+            total:
+              type: integer
+              format: int64
+              examples:
+                - 20
+            perPage:
+              type: integer
+              format: int64
+              examples:
+                - 10
+            currentPage:
+              type: integer
+              format: int64
+              examples:
+                - 1
+            lastPage:
+              type: integer
+              format: int64
+              examples:
+                - 2
+            firstPage:
+              type: integer
+              format: int64
+              examples:
+                - 1
+            firstPageUrl:
+              type: string
+              examples:
+                - /?page=1
+            lastPageUrl:
+              type: string
+              examples:
+                - /?page=2
+            nextPageUrl:
+              type: string
+              nullable: true
+              examples:
+                - /?page=2
+            previousPageUrl:
+              type: string
+              nullable: true
+              examples:
+                - /?page=2
+    Error:
+      type: object
+      description: RFC 9457 (https://datatracker.ietf.org/doc/html/rfc9457)
+      properties:
+        type:
+          type: string
+          examples:
+            - https://example.com/errors/generic-error
+        title:
+          type: string
+          examples:
+            - Une erreur inattendue est survenue.
+            - Impossible de récupérer l'utilisateur spécifié
+        detail:
+          type: string
+          examples:
+            - Malheureusement, nous ne pouvons pas donner suite à votre requête
+            - Vous ne disposez pas des droits suffisants pour effectuer cette
+              action
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/ErrorDetail'
+    ErrorDetail:
+      type: object
+      description: Elément dans le tableau des erreurs
+      properties:
+        detail:
+          type: string
+          examples:
+            - Le nom doit être composé uniquement de lettres
+            - Le type d'utilisateur n'est pas valide
+        pointer:
+          type: string
+          description: Le pointeur sert à localiser le problème dans la requête, en
+            utilisant un [Pointeur
+            JSON](https://datatracker.ietf.org/doc/html/rfc6901)
+    Credentials:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          examples:
+            - office@test.com
+        password:
+          type: string
+          format: password
+          examples:
+            - 123456Az
+    AccessToken:
+      type: object
+      properties:
+        type:
+          type: string
+          examples:
+            - bearer
+        name:
+          type:
+            - string
+          nullable: true
+          examples:
+            - foo
+        token:
+          type: string
+          examples:
+            - oat_ODg.S09rSW51aHNxZFotTlZTU0VfYXhXMDk3dU1CSzF3VXBTZW5ZdllzbzMxNzM3MDQzODM
+        abilities:
+          type: array
+          items:
+            type: string
+            examples:
+              - '*'
+              - users:read
+        lastUsedAt:
+          type: string
+          nullable: true
+          examples:
+            - null
+        expiresAt:
+          type: string
+          nullable: true
+          examples:
+            - null
+    UserType:
+      type: string
+      enum:
+        - CAREGIVER
+        - OFFICE
+      examples:
+        - CAREGIVER
+    User:
+      type: object
+      required:
+        - firstName
+        - lastName
+        - email
+        - type
+      properties:
+        id:
+          type: string
+          format: uuid
+          examples:
+            - cb4e4ad8-7284-403f-b155-8f6996ed61dd
+        firstName:
+          type: string
+          examples:
+            - Samy
+            - Theo
+        lastName:
+          type: string
+          examples:
+            - Doe
+            - Bar
+        email:
+          type: string
+          format: email
+          examples:
+            - samy@mediplan.com
+            - office@test.come
+        type:
+          $ref: '#/components/schemas/UserType'
+    Mission:
+      type: object
+      required:
+        - title
+        - patient
+        - start
+        - end
+        - address
+        - latitude
+        - longitude
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+          examples:
+            - b5acd858-177a-4dc3-9a1c-2e3decceff59
+        title:
+          type: string
+          examples:
+            - Prise de sang
+            - Relevé de tension
+        patient:
+          type: string
+          examples:
+            - Corbin Okuneva
+            - Titus Gislason
+        start:
+          type: string
+          format: date-time
+          examples:
+            - 2024-11-02T10:30:00Z
+        end:
+          type: string
+          format: date-time
+          examples:
+            - 2024-11-02T10:40:00Z
+        address:
+          type: string
+          examples:
+            - 29 Rue Ernest Thierry-Mieg 90000 Belfort
+            - 5 Rue Jacqueline Auriol 90000 Belfort
+        latitude:
+          type: number
+          format: latitude
+          minimum: -90.0
+          maximum: 90.0
+          examples:
+            - 6.843235
+        longitude:
+          type: number
+          format: longitude
+          minimum: -180.0
+          maximum: 180.0
+          examples:
+            - 47.641362
+        assignee:
+          type: object
+          $ref: '#/components/schemas/User'
+    MissionSwapRequestStatus:
+      type: string
+      enum:
+        - PENDING
+        - ACCEPTED
+        - REJECTED
+        - EXPIRED
+    MissionSwapRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+          examples:
+            - b5acd858-177a-4dc3-9a1c-2e3decceff59
+        missionId:
+          type: string
+          format: uuid
+          examples:
+            - b8ded858-177a-4dc3-9a1c-2e3decceff59
+        senderId:
+          type: string
+          format: uuid
+          readOnly: true
+          examples:
+            - b5acd858-177a-4dc3-9a1c-2e3decceff59
+        receiverId:
+          type: string
+          format: uuid
+          examples:
+            - b5acd858-177a-4dc3-9a1c-2e3decceff59
+        status:
+          $ref: '#/components/schemas/MissionSwapRequestStatus'
+        createdAt:
+          type: string
+          format: date-time
+          examples:
+            - 2024-11-02T10:40:00Z
+    ExtendedMissionSwapRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+          examples:
+            - b5acd858-177a-4dc3-9a1c-2e3decceff59
+        mission:
+          type: object
+          $ref: '#/components/schemas/Mission'
+        sender:
+          type: object
+          $ref: '#/components/schemas/User'
+        receiver:
+          type: object
+          $ref: '#/components/schemas/User'
+        status:
+          $ref: '#/components/schemas/MissionSwapRequestStatus'
+        createdAt:
+          type: string
+          format: date-time
+          examples:
+            - 2024-11-02T10:40:00Z
+  examples:
+    CreateMission:
+      summary: Un exemple de création de mission
+      description: >
+        Un exemple de création de mission
+      value:
+        title: Prise de sang
+        patient: Corbin Okuneva
+        start: 2024-11-02T10:30:00Z
+        end: 2024-11-02T10:40:00Z
+        address: 5 Rue Jacqueline Auriol 90000 Belfort
+        latitude: 6.843235
+        longitude: 47.641362
+        assignee:
+          id: cb4e4ad8-7284-403f-b155-8f6996ed61dd
+    UpdateMission:
+      summary: Un exemple de mise à jour de mission
+      description: >
+        Cet exemple met à jour tous les champs.
+        Cependant, avec la méthode PATCH, tous les champs n'ont pas besoin d'être envoyés.
+      value:
+        title: Nouveau titre de mission
+        patient: John Doe
+        start: 2024-12-02T10:30:00Z
+        end: 2024-12-02T10:50:00Z
+        addres: 5 Rue Jacqueline Auriol 90000 Belfort
+        latitude: 6.843235
+        longitude: 47.641362
+        assignee:
+          id: 6c13af60-a0be-41af-888e-8a003729b9ab
+    CreateMissionSwapRequest:
+      summary: Un exemple de création de demande
+      value:
+        missionId: d84e4ad8-7284-201f-b155-8f6996ed61da
+        receiverId: 6c13af60-a0be-41af-888e-8a003729b9ab
+    AcceptMissionSwapRequest:
+      summary: Un exemple d'acceptation de demande
+      value:
+        status: ACCEPTED
+    RejectMissionSwapRequest:
+      summary: Un exemple de refus de demande
+      value:
+        status: REJECTED

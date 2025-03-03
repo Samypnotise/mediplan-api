@@ -1,0 +1,10 @@
+{
+  "subdomain": "mediplan-api.apidocumentation.com",
+  "references": [
+    {
+      "name": "API Reference",
+      "path": "app/resources/openapi.yaml"
+    }
+  ],
+  "guides": []
+}
